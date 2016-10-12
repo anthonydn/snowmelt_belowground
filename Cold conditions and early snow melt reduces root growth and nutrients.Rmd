@@ -1,0 +1,139 @@
+```{r echo=FALSE, results='hide', message=FALSE, warning = FALSE}
+#devtools::install_github("anthonydn/treateffect@bfaf6ba")
+library(treateffect)
+library(knitr)
+smc <- c("black", "forestgreen", "orange", "red")
+smcd <- c("forestgreen", "orange", "red")
+set.seed(123)
+proj_dir <- "https://github.com/anthonydn/snowmelt_belowground/blob/data/"
+theme_te()
+rcsv <- function(x) read.csv(paste(proj_dir, x, sep = ''), string = F)
+```
+
+```{r physical_conditions, echo = FALSE, results = 'hide', fig.width = 10, fig.height = 6, message = FALSE, warning = FALSE}
+
+cond_plot <- list(geom_vline(xintercept = c(119, 124, 133, 134, 137, 138, 141, 146, 152,161)),
+  scale_x_continuous(breaks=c(118,125,135,141,148,152, 161),lim=c(108,170),
+  labels = c("Apr 28","May 5","May 15","May 21","May 28", "Jun 1", "Jun 10")),
+  scale_color_manual(values = c("black", "forestgreen")),
+  facet_grid(year~.))
+
+#soil temp
+ib <- rcsv("ibuttons.csv")
+ib$doy[ib$hour==23] <- ib$doy[ib$hour==23]+1
+mutate(ib, hour = plyr::mapvalues(hour, c(23,1,3,5,7,9,11,13,15,17,19,21),
+    c(0,0,4,4,8,8,12,12,16,16,20,20)), time = doy + (hour/24)) %>%
+  filter(temp < 12, treatment %in% c("C.N", "A.N"), tussock == "T", year != 2009) %>%
+  group_by(year, time, treatment) %>%
+  summarise(temp = mean(temp)) %>%
+ggplot(aes(time, temp, col = treatment)) + geom_line() + cond_plot
+
+#snow depth
+rcsv("snowdepth.csv") %>%
+group_by(year, doy, treatment) %>% summarise(depth = mean(depth)) %>% 
+ggplot(aes(doy, depth, col = treatment)) + geom_line(lwd = 2) + cond_plot
+
+#air temp (I had more data than this. can't remember where I got them. possibly Imnavait weather tower data?)
+rcsv("airtemp.csv") %>% 
+  group_by(year, doy, treatment) %>% summarise(temp = mean(air_temp_mean)) %>% 
+  filter(treatment == "C.N" | treatment == "A.N") %>% 
+ggplot(aes(doy, temp, col = treatment)) + geom_line(lwd = 2) + cond_plot
+```
+
+
+```{r root_biomass, echo = FALSE, results = 'hide', fig.width = 10, fig.height = 6, message = FALSE, warning = FALSE}
+roots <- rcsv("roots.csv")
+tubestats <- rcsv("tubestats.csv")
+
+rall <- roots %>%
+  filter(Depth <= 20) %>%
+  group_by(Type, Year, doy, Treatment, Tube) %>%
+  summarise(root_area = sum(PA))
+
+rall <- merge(rall, tubestats[1:40, c("Tube", "windowsto20")])
+rall$sampled_volume <- rall$windowsto20/2 * 0.9 * 1.3 * 0.3
+rall$root_g[rall$Type == "ERVA"] <- rall$root_area[rall$Type == "ERVA"] / 100 * 0.01009
+rall$root_g[rall$Type == "NonERVA"] <- rall$root_area[rall$Type == "NonERVA"] / 100 * 0.01648
+rall$root_g_m2 <- rall$root_g / rall$sampled_volume * 100 * 100 * 10
+rall$Treatment <- ordered(rall$Treatment, c("CN", "AN", "CO", "AO"))
+
+rall.te <- treateffect(rall, root_g_m2 ~ Treatment | Year + Type, 
+  times = "doy", comp_function = bootdiff)
+plot(rall.te, points = F, dodge = 4, treatcol = smc)
+plotdiff(rall.te, treatcol = smcd, dodge = 4)
+
+rall.te.bootfrac <- treateffect(rall, root_g_m2 ~ Treatment | Year + Type, 
+  times = "doy", comp_function = bootfrac)$comparisons
+```
+
+```{r aboveground_phenology, echo = FALSE, results = 'hide', fig.width = 10, fig.height = 5, message = FALSE, warning = FALSE}
+pheno <- rcsv("phenology.csv") %>%
+  filter(species == "BETNAN" | species == "CARBIG" | species == "ERIVAG" | species == "SALPUL") %>%
+  data.frame
+pheno$treatment <- ordered(pheno$treatment, c("C.N", "A.N", "C.O", "A.O"))
+pheno$species <- ordered(pheno$species, c("ERIVAG", "CARBIG", "BETNAN", "SALPUL"))
+
+pheno.te <- treateffect(pheno, FLE ~ treatment|species+year, comp_function = bootdiff)
+plot(pheno.te, treatcol = smc, points = F, scales = "fixed")
+plotdiff(pheno.te, treatcol = smcd)
+```
+
+``` {r labile_N, echo=FALSE, results='hide', fig.width = 10, fig.height = 5, message=FALSE, warning = FALSE}
+ml <- rcsv("soilporewater.csv") %>% 
+  mutate(treatment = ordered(treatment, levels = c("C.N", "A.N", "C.O", "A.O"))) %>% 
+  filter(suspicious != "yes")
+
+ml.season <- treateffect(ml, labile ~ treatment | year + tussock,
+  subsample = "doy", block = "block", subset = n > 10, comp_function = bootdiff)
+plot(ml.season, treatcol = smc, points = TRUE)
+plotdiff(ml.season, treatcol = smcd, scales = "fixed")
+
+ml.te <- treateffect(ml, labile ~ treatment|tussock+year, times = "doy", 
+  block = "block", subset = year == 2011, comp_function = bootdiff)
+plotdiff(ml.te, subset = comparison == "A.N - C.N", treatcol = smcd)
+```
+
+``` {r SUPP_all_microlysimeters, echo=FALSE, results='hide', fig.width = 25, fig.height = 50, message=FALSE, warning = FALSE}
+ml$tube <- ordered(interaction(ml$block, ml$treatment))
+pd <- position_dodge(1.5)
+#pdf(paste(proj_dir, "ml_indiv10x2.1.pdf",sep=''),width=50,height=100,useDing=F)
+ggplot(ml, aes(doy,labile,col=treatment)) +
+  geom_line(aes(doy,labile,col=tube), lwd=0.5, position = pd) +
+  geom_point(position = pd, size = 4) +
+  scale_x_continuous(breaks=c(138,152,182,213,244,260),lim=c(119,260),
+    labels = c("May 18","Jun 1","Jul 1","Aug 1","Sep 1","Sep 15")) + 
+  scale_y_continuous(limits=c(0,160)) +
+  scale_color_manual(values=rep(c("forestgreen","red","black","orange"),6)) +
+  facet_grid(tussock+year~.)
+#dev.off()
+```
+
+``` {r SUPP_minirhizotron_detail, echo=FALSE, results='hide', fig.width = 15, fig.height = 12, message=FALSE, warning = FALSE}
+rr <- roots %>%
+  filter(
+    Date=="2010-08-11"|
+    Date=="2011-08-13"|
+    Date=="2012-08-04") %>%
+  group_by(Type,Year,Date,Treatment,Tube,Depth,Block) %>%
+  summarise(root_area = sum(PA))
+rr <- merge(rr,tubestats[1:40,c("Tube","tubedepth")])
+rr$Treatment <- ordered(rr$Treatment,c("CN","AN","CO","AO"))
+
+ggplot(subset(rr, Type == "ERVA"),
+    aes(-Depth, root_area, col = Treatment, fill = Treatment)) + 
+  geom_bar(stat = "identity", width=0.5, linetype = "blank") +
+  geom_vline(aes(xintercept = -tubedepth - 0.5)) +
+  coord_flip() +
+  scale_color_manual(values = smc) +
+  scale_fill_manual(values = smc) +
+  facet_grid(Year ~ Treatment + Block + Tube)
+
+ggplot(subset(rr, Type == "NonERVA"),
+    aes(-Depth, root_area, col = Treatment, fill = Treatment)) + 
+  geom_bar(stat = "identity", width=0.5, linetype = "blank") +
+  geom_vline(aes(xintercept = -tubedepth - 0.5)) +
+  coord_flip() +
+  scale_color_manual(values = smc) +
+  scale_fill_manual(values = smc) +
+  facet_grid(Year ~ Treatment + Block + Tube)
+```
