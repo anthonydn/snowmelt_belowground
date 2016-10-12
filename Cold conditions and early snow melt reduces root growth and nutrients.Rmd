@@ -12,7 +12,7 @@ rcsv <- function(x) read.csv(paste(proj_dir, x, sep = ''), string = F)
 
 ```{r physical_conditions, echo = FALSE, results = 'hide', fig.width = 10, fig.height = 6, message = FALSE, warning = FALSE}
 
-cond_plot <- list(geom_vline(xintercept = c(119, 124, 133, 134, 137, 138, 141, 146, 152,161)),
+cond_plot <- list(geom_vline(xintercept = c(119, 124, 133, 134, 137, 138, 141, 146, 152, 161)),
   scale_x_continuous(breaks = c(118, 125, 135, 141, 148, 152, 161),lim = c(108, 170),
   labels = c("Apr 28","May 5","May 15","May 21","May 28", "Jun 1", "Jun 10")),
   scale_color_manual(values = c("black", "forestgreen")),
@@ -102,8 +102,8 @@ pd <- position_dodge(1.5)
 ggplot(ml, aes(doy, labile, col = treatment)) +
   geom_line(aes(doy, labile, col = tube), lwd = 0.5, position = pd) +
   geom_point(position = pd, size = 4) +
-  scale_x_continuous(breaks=c(138,152,182,213,244,260), lim=c(119,260),
-    labels = c("May 18","Jun 1","Jul 1","Aug 1","Sep 1","Sep 15")) + 
+  scale_x_continuous(breaks=c(138, 152, 182, 213, 244, 260), lim=c(119, 260),
+    labels = c("May 18", "Jun 1", "Jul 1", "Aug 1", "Sep 1", "Sep 15")) + 
   scale_y_continuous(limits=c(0,160)) +
   scale_color_manual(values=rep(c("forestgreen", "red", "black", "orange"), 6)) +
   facet_grid(tussock + year ~ .)
