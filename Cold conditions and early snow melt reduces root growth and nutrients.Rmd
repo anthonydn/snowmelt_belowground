@@ -1,5 +1,5 @@
 ```{r echo=FALSE, results='hide', message=FALSE, warning = FALSE}
-#devtools::install_github("anthonydn/treateffect@bfaf6ba")
+devtools::install_github("anthonydn/treateffect@bfaf6ba")
 library(treateffect)
 library(knitr)
 smc <- c("black", "forestgreen", "orange", "red")
