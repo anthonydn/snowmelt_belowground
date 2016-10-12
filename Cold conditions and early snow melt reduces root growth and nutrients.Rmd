@@ -5,7 +5,7 @@ library(knitr)
 smc <- c("black", "forestgreen", "orange", "red")
 smcd <- c("forestgreen", "orange", "red")
 set.seed(123)
-proj_dir <- "https://github.com/anthonydn/snowmelt_belowground/blob/data/"
+proj_dir <- "https://raw.github.com/anthonydn/snowmelt_belowground/master/data/"
 theme_te()
 rcsv <- function(x) read.csv(paste(proj_dir, x, sep = ''), string = F)
 ```
