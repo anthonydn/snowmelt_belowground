@@ -40,7 +40,6 @@ rcsv("airtemp.csv") %>%
 ggplot(aes(doy, temp, col = treatment)) + geom_line(lwd = 2) + cond_plot
 ```
 
-
 ```{r root_biomass, echo = FALSE, results = 'hide', fig.width = 10, fig.height = 6, message = FALSE, warning = FALSE}
 roots <- rcsv("roots.csv")
 tubestats <- rcsv("tubestats.csv")
@@ -51,16 +50,51 @@ rall2 <- roots %>%
   summarise(root_area = sum(PA)) %>% 
   left_join(tubestats %>% select(Tube, length = length.of.tube, depth = tubedepth)) %>% 
   mutate(root_g = ifelse(Type == "ERVA", root_area/100 * 0.01009, 
-    root_area/100 * 0.01648), #100 mm2 cm2
+    root_area/100 * 0.01648), #100 mm2 cm-2
     root_g_m2 = root_g * (depth / length) * (1e4 / (1.3 * 0.3)))
 
 rall.te <- treateffect(rall2, root_g_m2 ~ Treatment | Year + Type, 
-  times = "doy", comp_function = bootfrac)
+  times = "doy", comp_function = bootdiff)
 plot(rall.te, points = F, dodge = 4, treatcol = smc)
 plotdiff(rall.te, treatcol = smcd, dodge = 4)
 
 rall.te.bootfrac <- treateffect(rall, root_g_m2 ~ Treatment | Year + Type, 
   times = "doy", comp_function = bootfrac)$comparisons
+```
+
+```{r ndvi, echo = FALSE, results = 'hide', fig.width = 10, fig.height = 5, message = FALSE, warning = FALSE}
+ndvi <- rcsv("ndvi.csv") %>% 
+  mutate(doy = lubridate::yday(date), 
+    treatment = ordered(ndvi$treatment, c("C.N", "A.N", "C.O", "A.O"))) %>% 
+  group_by(year, treatment, block) %>% 
+  filter(doy > 150) %>% 
+  mutate(NDVI_centered = as.numeric(scale(NDVI, scale = FALSE)),
+    NDVI_scaled = as.numeric(scale(NDVI, scale = TRUE)))
+
+pdf(file = "C:/Dropbox/scaling2.pdf", height = 20, width = 12)
+ggplot(ndvi, aes(doy, NDVI, col = interaction(block, treatment)))  +
+  geom_line() +
+  facet_grid(year ~ .) + 
+  scale_color_manual(values = rep(smc, ea = 5))
+ggplot(ndvi, aes(doy, NDVI_scaled, col = interaction(block, treatment)))  +
+  geom_line() +
+  facet_grid(year ~ .) + 
+  scale_color_manual(values = rep(smc, ea =5))
+
+ndvi.te <- ndvi %>% treateffect(NDVI ~ treatment | year, time = "doy")
+plot(ndvi.te, treatcol = smc, points = F, panel.eq = year + variable ~ ., dodge = 0.5)
+ndvi.te <- ndvi %>% treateffect(NDVI_centered ~ treatment | year, time = "doy")
+plot(ndvi.te, treatcol = smc, points = F, panel.eq = year + variable ~ ., dodge = 0.5)
+ndvi.te <- ndvi %>% treateffect(NDVI_scaled ~ treatment | year, time = "doy")
+plot(ndvi.te, treatcol = smc, points = F, panel.eq = year + variable ~ ., dodge = 0.5)
+dev.off()
+#for QA/QC
+ggplot(ndvi, aes(doy, NDVI, col = treatment)) +
+  geom_point() +
+  geom_line() +
+  scale_color_manual(values = smc) +
+  facet_grid(year + treatment + block ~ .)
+
 ```
 
 ```{r aboveground_phenology, echo = FALSE, results = 'hide', fig.width = 10, fig.height = 5, message = FALSE, warning = FALSE}

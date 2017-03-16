@@ -1,0 +1,424 @@
+---
+title: "snowmelt"
+author: "Anthony Darrouzet-Nardi, Michael Weintraub, Patrick Sullivan, Heidi Steltzer, Carolyn Livensperger, Matt? Josh?"
+output: html_document
+---
+
+_Roots_
+Roots showed indications of delayed root colonization (Iversen et al., 2012) in 2010, casting some doubt upon the measured values during that year; this we excluded these from analysis.
+
+_Data Analysis_
+
+The effect of the early snowmelt, warming, and combined treatments were evaluated by evaluating the effect size of these treatments on each variable of interest {Nakagawa, 2007 #2462;Cumming, 2013 #2731}. For most measured variables, effect sizes are reported as treatment/control ratios (denoted _T~r~_) with 95% confidence intervals estimated by bootstrapping {percentile method`; \Carpenter, 2000 #2781}. In cases where ratios are not appropriate, such as the day of year for phenological events, differences between the treatments (treatment - control) are calculated, also with 95% confidence intervals.We calculated effect size with 95% confidence intervals for each of our measured variables on each measurement date, allowing us to evaluate changing effects of the treatments throughout the season using focused comparisons with the control treatment as opposed to pooling variance across the whole season {Rosenthal, 1985 #2463}. For several of the more frequent measurements (soil pore water nutrients and NDVI), we also used seasonal averages based on the mean values across multiple dates, retaining the replication level of _n_ = 5 for each treatment. Analyses were facilitated by a custom-made R package treateffect that is available at https://github.com/anthonydn/treateffect. The data used for these analyses are available in a permanent archive {ACADIS, 2013 #2464}, and the specific data tables and analysis scripts for this study are available at https://github.com/anthonydn/snowmelt.
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE, results = 'hide', message = FALSE, warning = FALSE)
+
+#devtools::install_github("anthonydn/treateffect")
+library(treateffect)
+library(knitr)
+set.seed(12352456)
+smc <- c("black", "gray", "red", "navyblue")
+smcd <- c("gray", "red", "navyblue")
+#proj_dir <- "https://raw.github.com/anthonydn/snowmelt_2012_harvest/master/data/"
+proj_dir <- "C:/Dropbox/Projects/Snowmelt/Papers/data/"
+theme_te()
+rcsv <- function(x) read.csv(paste(proj_dir, x, sep = ''), string = F) %>% tbl_df
+fig = 1
+sfig = 0
+
+smn_scale <- function() scale_x_continuous(
+  breaks = c(147, 161, 171, 181, 193, 208, 226),
+  limits = c(145, 228),
+  labels = c("May 26", "Jun 9", "Jun 19", "Jun 29", "Jul 11", "Jul 26",  "Aug 13"))
+
+```
+
+_Physical conditions_
+
+```{r physical_conditions, fig.width = 10, fig.height = 6}
+
+cond_plot <- list(geom_vline(xintercept = c(119, 124, 133, 134, 137, 138, 141, 146, 152, 161)),
+  scale_x_continuous(breaks = c(118, 125, 135, 141, 148, 152, 161),lim = c(108, 170),
+  labels = c("Apr 28","May 5","May 15","May 21","May 28", "Jun 1", "Jun 10")),
+  scale_color_manual(values = c("black", "forestgreen")),
+  facet_grid(year ~ .))
+
+#soil temp
+ib <- rcsv("ibuttons.csv")
+ib$doy[ib$hour == 23] <- ib$doy[ib$hour == 23]+1
+mutate(ib, hour = plyr::mapvalues(hour, c(23,1,3,5,7,9,11,13,15,17,19,21),
+    c(0,0,4,4,8,8,12,12,16,16,20,20)), time = doy + (hour/24)) %>%
+  filter(temp < 12, treatment %in% c("C.N", "A.N"), tussock == "T", year != 2009) %>%
+  group_by(year, time, treatment) %>%
+  summarise(temp = mean(temp)) #%>%
+#ggplot(aes(time, temp, col = treatment)) + geom_line() + cond_plot
+
+#snow depth
+rcsv("snowdepth.csv") %>%
+group_by(year, doy, treatment) %>% summarise(depth = mean(depth)) #%>% 
+#ggplot(aes(doy, depth, col = treatment)) + geom_line(lwd = 2) + cond_plot
+
+#air temp
+rcsv("airtemp.csv") %>% 
+  group_by(year, doy, treatment) %>% summarise(temp = mean(air_temp_mean)) %>% 
+  filter(treatment == "C.N" | treatment == "A.N") #%>% 
+#ggplot(aes(doy, temp, col = treatment)) + geom_line(lwd = 2) + cond_plot
+
+fig = fig + 1
+```
+
+![physical conditions](C:\Dropbox\Projects\Snowmelt\Papers\physical_conditions.png)
+Figure `r fig`. a. Timing of fabric deployment, snowmelt, snow depth, air temperature, and soil temperature in control and accelerated plots. Air temperatures are daily means while soil temperatures were recorded every four hours. Soil temperatures were measured with iButtons buried at 10 cm depth in _E. vaginatum_ tussocks. b. Effect of open top chambers on air temperature.
+
+The fabric treatment advanced snowmelt by 4, 15, and 10 days in 2010, 2011, and 2012 respectively (Figure `r fig`a). Earlier fabric deployment was associated with larger advancements of snowmelt in 2011 and 2012, but in all three years, weather conditions had a strong effect on snowmelt dynamics. In 2010, air temperatures near 0 °C during the fabric deployment date, followed by warm temperatures just after fabric removal led to the relatively small advancement period of 4 days. In 2011, warm air temperatures during fabric deployment melted the snow on the early snowmelt plots rapidly, and low temperatures after fabric removal (daily means as low as -12 °C) led to our longest snowmelt advancement of 14 days. In 2012, sub-zero temperatures during fabric deployment slowed melt in the early snowmelt plots, but a period of above-zero temperatures melted out the snow in the early snowmelt plots while the control plots maintained cold soil temperatures and the deepest snowpack of the three years (50 ± 1 cm, vs. 24 ± 2 cm in 2010 and 39 ± 1 cm in 2011). Warmer temperatures after fabric removal in 2012 led to an intermediate advancement period of 10 days. In all three years, snowmelt date and soil thaw date (as measured by iButtons at 10 cm depth  in _E. vaginatum_ tussocks) were closely linked in the control plots, with above-zero temperatures occurring in tussocks within several days of snowmelt each year (Figure `r fig`a). The fabric treatment warmed soils while deployed and also increased belowground fluctuations in temperature, which were clearly visible in 2010 and 2011 (Figure `r fig`a). The length of the period of transition from ice to water during which soils were at 0 °C (isothermal period) varied among years, with a rapid thaw period in 2011 and a longer one in control plots in 2012. The OTCs warmed the air by 1.6 °C in 2010; 1.9°C in 2011; and 1.4 °C in 2012 (Figure `r fig`b).
+
+_First leaf expansion in marked individuals_
+
+```{r aboveground_phenology, fig.width = 10, fig.height = 5}
+pheno <- rcsv("phenology.csv") %>%
+  filter(species == "BETNAN" | species == "CARBIG" | 
+    species == "ERIVAG" | species == "SALPUL") %>%
+  mutate(treatment = ordered(treatment, c("C.N", "A.N", "C.O", "A.O")),
+    species = ordered(species, c("ERIVAG", "CARBIG", "BETNAN", "SALPUL")))
+
+pheno.te <- treateffect(pheno, FLE ~ treatment|species+year, comp_function = bootdiff)
+#plot(pheno.te, treatcol = smc, points = F, scales = "fixed")
+#plotdiff(pheno.te, treatcol = smcd)
+fig = fig + 1
+```
+
+![FLE](C:\Dropbox\Projects\Snowmelt\Papers\FLE.png)
+
+Figure `r fig`. Interannual variation in aboveground plant phenology. a. mean ± SE by treatment (_n_ = 5). The transition from >20% snow cover in the controls to snow-free is shown by the shading in the same way as Figure `r fig-2`. b. mean difference between control and each of the three treatments ± 95% bootstrap confidence intervals.
+
+In 2010, the short snowmelt advancement period of 4 days caused a small but detectable advance in date of first leaf expansion for the species that we observed (Fig. `r fig`b). The warming treatment had an effect of similar size to the early snowmelt treatment on _Betula nana_, but not on the other three species. In 2011, despite the much longer snowmelt advancement period of 15 days, a large advancement in first leaf expansion was not observed: _E. vaginatum_ showed little difference among treatments (0 [-1, 0] days  ); _C. bigelowii_ in the early snowmelt treatment showed small differences from the control (-1 [-3, 0] days) and a slightly a larger difference in the combined treatment (-4 [-5, -2] days); the two shrub species _B. nana_ and _S. pulchra_ showed similar treatment effects to _C. bigelowii._ The small treatment effect relative to the length of snow melt advancement in 2011 coincided with the cold temperatures observed during the snowmelt advancement period (Fig. `r fig`). In 2012, though the warming treatment was shorter than in 2011 (10 days), a more substantial treatment effect was observed. Effects in both early snowmelt and combined treatments were observed in all four species and ranged from advances in first leaf expansion of -3 [-5, -2] days (_S. pulchra_ in the early snowmelt treatment) to -10 [-12, -8] days (_E. vaginatum_ in the combined treatment). The warming treatment alone showed a smaller effect for _B. nana_ (-6 [-7, -5] days) and _E. vaginatum_ (-10 [-12, -8] days), and no evidence of an effect in the shrub species.
+
+_NDVI_
+
+```{r NDVI, fig.width = 10, fig.height = 6}
+ndvi <- read_csv("C:/Dropbox/Projects/Snowmelt/Papers/data/ndvi.csv")
+
+ndvi_f4 <- ndvi %>% 
+  filter(sketchy == "no") %>% 
+  group_by(year, treatment, block) %>% 
+  top_n(4, -doy) %>% 
+  summarise(first4 = mean(NDVI))
+
+ndvi <- ndvi %>% 
+  filter(sketchy == "no") %>% 
+  left_join(ndvi_f4) %>% 
+  mutate(treatment = ordered(treatment, c("C.N", "A.N", "C.O", "A.O", "C.S"))) %>% 
+  group_by(year, treatment, block) %>% 
+  mutate(NDVI_scaled = as.numeric(scale(NDVI - first4, center = FALSE)))
+
+mb <- coef(lm(ndvi$NDVI ~ ndvi$NDVI_scaled))
+ndvi$NDVI_scaled <- ndvi$NDVI_scaled * mb[2] + mb[1]
+ndvi$treatment[ndvi$treatment == "C.S"] <- "C.N"
+
+ndvi.te <- ndvi %>% treateffect(NDVI_scaled ~ treatment | year, 
+  time = "doy", comp_function = bootdiff)
+plot(ndvi.te, treatcol = c(smc), points = F, panel.eq = year + y_variable ~ .,
+  dodge = 1) + smn_scale()
+
+fig = fig + 1
+sfig = sfig + 1
+
+ndvi.june <- ndvi %>% 
+  filter(doy > 151, doy < 182) %>% 
+  treateffect(NDVI_scaled ~ treatment | year, subsample = "doy", 
+    block = "block", comp_function = bootdiff)
+
+ndvi.july <- ndvi %>% 
+  filter(doy > 181, doy < 213) %>% 
+  treateffect(NDVI_scaled ~ treatment | year, subsample = "doy", 
+    block = "block", comp_function = bootdiff)
+
+#plot(ndvi.june, treatcol = smc, points = TRUE)
+#plotdiff(ndvi.june, treatcol = smcd)
+
+```
+
+Figure `r fig`. Scaled NDVI data.
+
+Similar to the marked individual phenology data, we saw relatively small differences in NDVI seasonal trajectories among treatments in 2010, small differences in 2011 despite the large acceleration in snowmelt, and more substantial differences in 2012. During the month of June, leading up to peak NDVI, the largest differences in all years were in the combined treatment (combined - control ± 95%CI, 2010: `r compex_bootdiff(ndvi.june, comparison == "A.O - C.N", year == 2010, digits = 3)`, 2011: `r compex_bootdiff(ndvi.june, comparison == "A.O - C.N", year == 2011, digits = 3)`, 2012: `r compex_bootdiff(ndvi.june, comparison == "A.O - C.N", year == 2012, digits = 3)`).  In 2012, all three treatments had substantially higher NDVI prior to peak greenness (early snowmelt: `r compex_bootdiff(ndvi.june, comparison == "A.N - C.N", year == 2012, digits = 3)`, warmed: `r compex_bootdiff(ndvi.june, comparison == "C.O - C.N", year == 2012, digits = 3)`, combined: `r compex_bootdiff(ndvi.june, comparison == "A.O - C.N", year == 2012, digits = 3)`). During and after peak NDVI, treatment differences were less pronounced (e.g., in July, early snowmelt: `r compex_bootdiff(ndvi.july, comparison == "A.N - C.N", year == 2012, digits = 3)`, warmed: `r compex_bootdiff(ndvi.july, comparison == "C.O - C.N", year == 2012, digits = 3)`, combined: `r compex_bootdiff(ndvi.july, comparison == "A.O - C.N", year == 2012, digits = 3)`).
+
+
+_Root growth_
+
+```{r root_biomass, fig.width = 10, fig.height = 6}
+roots <- rcsv("roots.csv")
+tubestats <- rcsv("tubestats.csv")
+
+rall <- roots %>%
+  mutate(Treatment = ordered(Treatment, c("CN", "AN", "CO", "AO"))) %>% 
+  group_by(Type, Year, doy, Treatment, Tube) %>%
+  summarise(root_area = sum(PA)) %>% 
+  left_join(tubestats %>% select(Tube, length = length.of.tube, depth = tubedepth)) %>% 
+  mutate(root_g = ifelse(Type == "ERVA", root_area/100 * 0.01009, 
+    root_area/100 * 0.01648), #100 mm2 cm^-2^
+    root_g_m2 = root_g * (depth / length) * (1e4 / (1.3 * 0.3)))
+
+rall.te <- treateffect(rall, root_g_m2 ~ Treatment | Year + Type, 
+  times = "doy", comp_function = bootfrac, subset = Year != 2010)
+plot(rall.te, points = T, dodge = 4, treatcol = smc)
+
+fig = fig + 1
+sfig = sfig + 1
+```
+
+Figure `r fig`. Root biomass from minirhizotron measurements in 2011 and 2012. Lines and bars show mean ± SE by treatment (_n_ = 10); All treatments were measured on the same measurement dates, but positions of the SE bars are offset slightly in the figure to prevent overlap and keep all treatments visible. Note that scales differ for _E. vaginatum_ and non- _E. vaginatum_ roots.
+
+At the end of the second measurement season (2011), _E. vaginatum_ root biomass in the control plots was `r summex(rall.te, Year == 2011, Type == "ERVA", doy == 225, treatment == "CN", units = " g m-2", digits = 0)` (mean ± SE, _n_ = 10) g m^-2^, with similar values in the other two years (Fig. `r fig`a). As an example of the range among minirhizotron tubes, in 2011 the 10 control tubes ranged from 0 to `r filter(rall, Year == 2011, Treatment == "CN", doy == 225, Type == "ERVA")$root_g_m2 %>% max %>% round(., 0)` (Figure S`r sfig`). Non- _E. vaginatum_ roots showed lower values than the _E. vaginatum_ roots (e.g., 2011 controls = `r summex(rall.te, Year == 2011, Type == "NonERVA", doy == 225, treatment == "CN", units = " g m-2", digits = 0)`. In 2011, cumulative non- _E. vaginatum_ fine root production in the 10 control tubes ranged from 0 to `r filter(rall, Year == 2011, Treatment == "CN", doy == 225, Type == "NonERVA")$root_g_m2 %>% max %>% round(., 0)` g m^-2^. In 2011, mean values in non- _E. vaginatum_ root biomass were lower in early snowmelt and combined treatments than in the control treatment, but the differences were poorly constrained (Fig `r fig`b; early snowmelt _E. vaginatum_ _T~r~_ = `r compex_fracdiff(rall.te, Year == 2011, Type == "NonERVA", comparison == "AN - CN", doy == 225)`, combined = `r compex_fracdiff(rall.te, Year == 2011, Type == "NonERVA", comparison == "AO - CN", doy == 225)`).
+
+_Microbial biomass_
+
+```{r mbc_mbn, fig.width = 10, fig.height = 5}
+cores <- rcsv("cores.csv") %>% 
+  mutate(treatment = ordered(treatment, levels = c("C.N", "A.N", "C.O", "A.O")))
+
+mb.te <- treateffect(cores, mbc + mbn ~ treatment | tussock, 
+  times = "doy", comp_function = bootfrac)
+plot(mb.te, dodge = 4, treatcol = smc) + smn_scale()
+
+mb.te$comparisons %>% filter(doy < 150) %>% select(starts_with("frac")) %>% round(2)
+
+fig = fig + 1; sfig = sfig + 1
+```
+
+Figure `r fig`. Microbial biomass C (MBC) and microbial biomass N (MBN) measured using the chloroform fumigation technique (mean ± SE) during the 2012 season for all four of our treatments (_n_ = 5). Table S`r sfig` in the appendix shows effect sizes for treatment differences. All samples were taken on the same day, though treatment points are offset to avoid overlap.
+
+During the 2012 season, microbial biomass C (MBC) values in control plots ranged from 1.5 ± 0.3 to 6.0 ± 2.4 mg g^-1^ soil (mean ± SE) in tussock samples and 2.2 ± 0.8 to 4.1 ± 0.7 mg g^-1^ in intertussock samples. On the first measurement date, we observed elevated MBC and MBN in almost all of the treatments (Figure `r fig`). This elevated treatment effect was most pronounced in the warming only treatments (
+MBC intertussock warming _T~r~_ = `r compex_fracdiff(mb.te, y_variable == "mbc", tussock == "I", comparison == "C.O - C.N", doy == 146, digits = 1)`,
+MBC tussock warming _T~r~_ = `r compex_fracdiff(mb.te, y_variable == "mbn", tussock == "T", comparison == "C.O - C.N", doy == 148, digits = 1)`,
+MBN intertussock warming _T~r~_ = `r compex_fracdiff(mb.te, y_variable == "mbc", tussock == "I", comparison == "C.O - C.N", doy == 146, digits = 1)`,
+MBN tussock warming _T~r~_ = `r compex_fracdiff(mb.te, y_variable == "mbn", tussock == "T", comparison == "C.O - C.N", doy == 148, digits = 1)`
+). 
+The exception was intertussock samples in the early snowmelt treatment (e.g., MBC intertussock early snowmelt _T~r~_ = `r compex_fracdiff(mb.te, y_variable == "mbc", tussock == "I", comparison == "A.N - C.N", doy == 146, digits = 1)`; Figure `r fig`). After this first date, _T~r~_ confidence intervals almost all included 1, and while high variation led to poorly constrained treatment effect sizes, there was no strong evidence of continued difference in MBC or MBN between control and treatment plots (Table S`r sfig`).
+
+_Microarthropods_
+
+```{r microarthropods, fig.width = 6, fig.height = 6}
+bugs <- rcsv("microarthropods.csv") %>% 
+  mutate(treatment = ordered(treatment, levels = c("C.N", "A.N")),
+    bugs.v = bugs / volume,
+    fmites.v = fmites / volume,
+    pmites.v = pmites / volume,
+    collembola.v = collembola / volume)
+bugs.te <- treateffect(bugs, bugs.v + fmites.v + pmites.v + collembola.v ~ treatment, 
+  times = "doy", comp_function = bootfrac)
+plot(bugs.te, points = T, dodge = 2, treatcol = smc) + smn_scale()
+
+bugs.te$comparisons %>% 
+  mutate(fracdiff = round(fracdiff, 2)*100,
+    fracdiff_lo = round(fracdiff_lo, 2)*100,
+    fracdiff_hi = round(fracdiff_hi, 2)*100)
+
+fig = fig + 1
+```
+
+Figure `r fig`. Microarthropod density measured during the 2012 season for early snowmelt and control treatments (_n_ = 5).
+
+On the first measurement date, June 7, 2012, soil microarthropod density as measured by dominant groups of organisms (collembolans, oribatid mites, and predatory mites) with pitfall traps were the lowest of the season in both treatments (control = 0.46 ± 0.07 animals cm^-3^; early snowmelt = 0.34 ± 0.06 animals cm^-3^). There was some evidence of a greater magnitude of oribatid mites in the control plots relative to the early snowmelt plot (
+_T~r~_ = `r compex_fracdiff(bugs.te, y_variable == "fmites.v", doy == 159)`
+), which drove the same trend in the overall microarthropod density (
+early snowmelt _T~r~_ = `r compex_fracdiff(bugs.te, y_variable == "bugs.v", doy == 159)`
+). On subsequent dates throughout the summer, pitfall traps from some plots showed higher values as more arthropods emerged, but no consistent treatment effect was observed among dates and different microarthropod groups, with mean differences among treatments often driven by single samples with high density (e.g., 6.5 microarthropods cm^-3^ on June 28 in a control plot) Figure `r fig`. Overall, we saw no evidence of earlier emergence in the early snowmelt treatment.
+
+_Soil pore water nitrogen_
+
+``` {r labile_N, echo=FALSE, results='hide', fig.width = 10, fig.height = 5, message=FALSE, warning = FALSE}
+ml <- rcsv("soilporewater.csv") %>% 
+  mutate(treatment = ordered(treatment, levels = c("C.N", "A.N", "C.O", "A.O"))) %>% 
+  filter(suspicious != "yes")
+
+ml.season <- treateffect(ml, labile ~ treatment | year + tussock,
+  subsample = "doy", block = "block", subset = n > 10, comp_function = bootfrac)
+plot(ml.season, treatcol = smc, points = TRUE)
+
+fig = fig + 1
+```
+
+Figure `r fig`. Seasonal averages of labile N. a. mean ± SE by treatment (n = 5) are shown as bars, with each point indicating the seasonal average of one microlysimeter measured across 12-32 dates; b. mean difference between control and each of the three treatments ± 95% bootstrap confidence intervals. 
+
+In 2010 and 2012, average seasonal soil pore water labile N (NO~3~^+^ + NH~4~^+^ + TFPA) was low (<10 µM; Figure `r fig`a, Figure S`r sfig`). With low values in all treatments, differences between treatments and controls were likewise low, showing a well constrained lack of effect (treatment - control = <5 µM for most treatments in all three years). However, in 2011, seasonal averages were higher and we saw a reduction in available labile N in the early snowmelt treatment, especially in the tussock soils (2011 early snowmelt _T~r~_ = `r compex_fracdiff(ml.season, year == 2011, comparison == "A.N - C.N", tussock == "T")`; Figure `r fig`b). In examining the specific timing of this effect, lower soil pore water labile N levels were seen in tussock soils beginning on June 9, 2011, and this difference persisted throughout the season until mid-August, approximately the time of plant senescence (Figure `r sfig+1`). In the intertussock soils, there was some evidence for a smaller effect in that same year driven by dates later in the season (Figure `r fig`). For detailed seasonal time courses in all four treatments, see Figure S`r sfig`.
+
+_Soil core extractable nitrogen_
+
+```{r cores_n, fig.width = 10, fig.height = 8}
+n.te <- treateffect(cores, labile + no3 + nh4 + tfpa ~ treatment | tussock, 
+  times = "doy", comp_function = bootfrac)
+plot(n.te, dodge = 4, treatcol = smc) + smn_scale()
+
+npool.te <- cores %>% 
+  separate(treatment, c("snow", "otc")) %>% 
+  mutate(snow = ordered(snow)) %>% 
+  treateffect(labile + no3 + nh4 + tfpa ~ snow | tussock, 
+    times = "doy", comp_function = bootfrac)
+#plotdiff(npool.te) #really this number should be tagged on the graph
+
+library(hotspots)
+h <- summary(hotspots(cores$labile))
+
+fig = fig + 1; sfig = sfig + 1
+```
+
+Figure `r fig`. Salt-extractable labile N (NH~4~^+^ + NO~3~^-^ + and TFPA, with these constituents also shown separately) in intertussock soil cores (left) and _E. vaginatum_ tussock soil cores (right). Note differing scales. Treatments are offset to avoid overplotting though all treatments were sampled on the same date.
+
+`r options(digits = 2)`
+Salt-extractable labile N (NH~4~^+^ + NO~3~^-^ + TFPA) values ranged from `r cores$labile %>% min` µg N g^-1^ to `r cores$labile %>% max` µg g^-1^, with a median value of `r cores$labile %>% median` µg g^-1^. The values were positively skewed, with the highest `r options(digits = 0); h$percent_phs`% of measured values accounting for `r h$percent_phs_sum`% of the total extractable labile N observed over the 2012 season. The control and warming treatments (i.e., the non-early snowmelt treatments) in tussock soils showed evidence of an early season pulse in N driven by nitrate. If we assume no interaction effect in the combined treatment and pool the early snowmelt and control treatments regardless of warming treatment, we see reduced N in the early snowmelt treatments (early snowmelt = 11.7 ± 4.1, control = 35.5 ± 7.2; _T~r~_ = `r compex_fracdiff(npool.te, y_variable == "labile", doy == 148, digits = 2)`, _n_ = 10; Figure `r fig`). This trend was driven entirely by NO~3~^-^ (Figure `r fig`), and the effect was not apparent during the following sampling date or subsequent dates; Table S`r sfig`). The intertussock soils did not show the same trend, instead showing the highest mean value on the third sampling date in 2012, June 19, 35.6 ± 27.4 µg g^-1^ in control plots. That peak, however, was driven by a hot spot in a single sample with a concentration of 146 µg g^-1^ labile N (142 µg g^-1^ of which was NH~4~^+^), our highest observed extractable labile N concentration. Finally, beginning on the fourth measurement date, July 11, 2012, levels of extractable labile N dropped to <15 µg g^-1^ in intertussock and <10 µg g^-1^ in tussock soil, with little difference between the treatments (Table S`r sfig`).
+
+_Resin-available N_
+
+```{r resins, fig.width=8, fig.height=8}
+resins <- rcsv("resins.csv") %>% 
+  mutate(treatment = ordered(treatment, levels = c("C.N", "A.N", "C.O", "A.O")))
+resins.te <- treateffect(resins, nh4 + no3 + tfpa_anion ~ treatment | doy + tussock,
+  comp_function = bootfrac)
+plot(resins.te, treatcol = smc, panel.eq = y_variable + tussock ~ doy)
+
+fig = fig + 1; sfig = sfig + 1
+
+```
+
+Figure `r fig`. Resin-available N on two dates in 2012.
+
+In 2012, for tussock samples only, the growing season (June 4 - August 16) resin-available NH~4~^+^ showed some evidence of being higher in the early snowmelt and combined treatments (and NO~3~^-^ in the combined treatment only) though there were outlying data points leading to poor constrainst on effect sizes (tussock early snowmelt NH~4~^+^ _T~r~_ = `r compex_fracdiff(resins.te, y_variable == "nh4", doy == 228, comparison == "A.N - C.N", tussock == "T")`, tussock combined NH~4~^+^ _T~r~_ = `r compex_fracdiff(resins.te, y_variable == "nh4", doy == 228, comparison == "A.O - C.N", tussock == "T")`, tussock combined NO~3~^-^ _T~r~_ = `r compex_fracdiff(resins.te, y_variable == "no3", doy == 228, comparison == "A.O - C.N", tussock == "T")`). Inthe overwinter resins (September 6, 2011 - June 4, 2012), most effects were poorly constrained, but there was some evidence of lower TFPA in intertussocks in the warming and snowmelt (but not combined) treatments (overwinter intertussock early snowmelt TFPA _T~r~_ = `r compex_fracdiff(resins.te, y_variable == "tfpa_anion", doy == 155, comparison == "A.N - C.N", tussock == "I")`, warmed = `r compex_fracdiff(resins.te, y_variable == "tfpa_anion", doy == 155, comparison == "C.O - C.N", tussock == "I")`, combined = `r compex_fracdiff(resins.te, y_variable == "TFPA", doy == 155, comparison == "A.O - C.N", tussock == "I")`).
+
+```{r exoenzymes, fig.width = 10, fig.height = 8}
+enzymes.te <- cores %>% 
+  filter(NAG < 4000) %>% #removed for plotting purposes
+treateffect(BG + NAG + LAP + PHENOX ~ treatment | tussock, 
+  times = "doy", comp_function = bootfrac)
+plot(enzymes.te, dodge = 4, treatcol = smc) + smn_scale()
+
+fig = fig + 1; sfig = sfig + 1
+```
+
+Figure `r fig`. Exoenzyme activities in intertussock soil cores (left) and _E. vaginatum_ tussock soil cores (right). Note differing scales. Treatments are offset to avoid overplotting though all treatments were sampled on the same date.
+
+_Exoenzyme activities_
+
+For most of the season, measurable activities were present for the hydrolytic enzymes we assayed (medians across all dates and treatments: BG: 548 nmol g^-1^ soil hr^-1^, NAG: 321 nmol g^-1^ hr^-1^, LAP: 16 nmol g^-1^ hr^-1^). Oxidative enzymes showed much lower rates (0.42 nmol g^-1^ hr^-1^), though interestingly there was a spike, particularly in the warming treatment on one date, July 11, 2012, at the same time that there was a low point in the hydrolytic enzyme activities (Figure `r fig`). In the warming and combined treatments of intertussock soils, we saw evidence of an increase in Leucine amino peptidase (LAP) activity on the first measurement date (
+warmed _T~r~_ = `r compex_fracdiff(enzymes.te, y_variable == "LAP", doy == 146, tussock == "I", comparison == "C.O - C.N", digits = 1)`,
+combined _T~r~_ = `r compex_fracdiff(enzymes.te, y_variable == "LAP", doy == 146, tussock == "I", comparison == "A.O - C.N", digits = 1)`
+; Figure S`r sfig`) and N-acetyl-$\alpha$-D-glucosaminidase (NAG) activity (
+warmed _T~r~_ = `r compex_fracdiff(enzymes.te, y_variable == "NAG", doy == 146, tussock == "I", comparison == "C.O - C.N", digits = 1)`,
+combined _T~r~_ = `r compex_fracdiff(enzymes.te, y_variable == "NAG", doy == 146, tussock == "I", comparison == "A.O - C.N", digits = 1)`
+; Figure `r fig`; Figure S`r sfig`). There was less evidence of a similar treatment effect in the early snowmelt treatment alone, though effect sizes were not particularly well constrained (
+early snowmelt LAP _T~r~_ = `r compex_fracdiff(enzymes.te, y_variable == "LAP", doy == 146, tussock == "I", comparison == "A.N - C.N", digits = 1)`,
+early snowmelt NAG _T~r~_ = `r compex_fracdiff(enzymes.te, y_variable == "NAG", doy == 146, tussock == "I", comparison == "A.N - C.N", digits = 1)`
+; Figure `r fig`). Activity rates in tussock samples were more variable and no obvious treatment effects were observed at any time during the season (Table S`r sfig`).
+
+###APPENDIX
+
+``` {r SUPP_all_microlysimeters, echo=FALSE, results='hide', fig.width = 25, fig.height = 50, message=FALSE, warning = FALSE}
+ml$tube <- ordered(interaction(ml$block, ml$treatment))
+pd <- position_dodge(1.5)
+
+#pdf(paste(proj_dir, "ml_indiv10x2.1.pdf",sep=''),width=50,height=100,useDing=F)
+# ggplot(ml, aes(doy, labile, col = treatment)) +
+#   geom_line(aes(doy, labile, col = tube), lwd = 0.5, position = pd) +
+#   geom_point(position = pd, size = 4) +
+#   scale_x_continuous(breaks=c(138, 152, 182, 213, 244, 260), lim=c(119, 260),
+#     labels = c("May 18", "Jun 1", "Jul 1", "Aug 1", "Sep 1", "Sep 15")) + 
+#   scale_y_continuous(limits=c(0,160)) +
+#   scale_color_manual(values=rep(c("forestgreen", "red", "black", "orange"), 6)) +
+#   facet_grid(tussock + year ~ .)
+#dev.off()
+```
+
+![](C:\Dropbox\Projects\Snowmelt\Papers\lysimeter_supp.png)
+Figure S`r sfig`. Detail of microlysimeter soil pore water labile N values for three measurement years (2010-2012). Points indicate individual concentrations from a single microlysimeter sample on a single date. The lines connect points that are from the same microlysimeters (five each per treatment per tussock/intertussock microsite-40 total, 20 in each panel). One very high value is shown as a number above an arrow for the 2011 tussock data. Values from the four treatments: control (black), early snowmelt (green), warmed (orange) and early snowmelt × warmed (red) are slightly horizontally displaced within each measurement date to prevent overplotting, but all samples were collected at the same time on each measurement date. The actual calendar dates are for non-leap years and that the actual 2012 calendar dates would be offset by one day (e.g., the tick mark on May 18 would indicate May 19, 2012).
+
+``` {r SUPP_minirhizotron_detail, fig.width = 15, fig.height = 12}
+# rr <- roots %>%
+#   filter(
+#     Date == "2010-08-11"|
+#     Date == "2011-08-13"|
+#     Date == "2012-08-04") %>%
+#   group_by(Type, Year, Date, Treatment, Tube, Depth, Block) %>%
+#   summarise(root_area = sum(PA))
+# rr <- merge(rr, tubestats[1:40, c("Tube", "tubedepth")])
+# rr$Treatment <- ordered(rr$Treatment,c("CN", "AN", "CO", "AO"))
+# 
+# ggplot(subset(rr, Type == "ERVA"),
+#     aes(-Depth, root_area, col = Treatment, fill = Treatment)) + 
+#   geom_bar(stat = "identity", width=0.5, linetype = "blank") +
+#   geom_vline(aes(xintercept = -tubedepth - 0.5)) +
+#   coord_flip() +
+#   scale_color_manual(values = smc) +
+#   scale_fill_manual(values = smc) +
+#   facet_grid(Year ~ Treatment + Block + Tube)
+# 
+# ggplot(subset(rr, Type == "NonERVA"),
+#     aes(-Depth, root_area, col = Treatment, fill = Treatment)) + 
+#   geom_bar(stat = "identity", width=0.5, linetype = "blank") +
+#   geom_vline(aes(xintercept = -tubedepth - 0.5)) +
+#   coord_flip() +
+#   scale_color_manual(values = smc) +
+#   scale_fill_manual(values = smc) +
+#   facet_grid(Year ~ Treatment + Block + Tube)
+```
+
+![](C:\Dropbox\Projects\Snowmelt\Papers\root_supp.png)
+Figure S`r sfig`. Root biomass at end of each season (August 11, 2010, August 13, 2011, August 4, 2012). Upper panels are E. vaginatum and lower panels are non-E. vaginatum. Each vertical gray subplot indicates a minirhizotron tube, the observed root area shown on the horizontal axis at each depth. The black lines at the bottom of each tube indicate the maximum observation depth of each tube. Note the different scales between upper and lower panels due to higher maximum root biomass in E. vaginatum.
+
+```{r supplemental_NDVI_detail, fig.width = 15, fig.height = 12}
+read_csv("C:/Dropbox/Projects/Snowmelt/Papers/data/ndvi.csv") %>% 
+  filter(sketchy == "no") %>% 
+  ggplot(aes(doy, NDVI, col = interaction(treatment, block))) +
+  geom_line(lwd = 1) +
+  facet_grid(year ~ .) +
+  scale_color_manual(values = rep(c("black", "forestgreen", "orange", "red", "gray"), 5))
+```
+
+```{r kable, results = 'asis'}
+options(knitr.kable.NA = '')
+lapply(list(`Microbial Biomass` = mb.te, `Labile N` = n.te, 
+    Exoenzymes = enzymes.te), function(x) {
+  fracdifftable(x$comparisons, digits = 1) %>% 
+  mutate(doy = plyr::mapvalues(doy, 
+    c(146, 160, 171, 181, 193, 208, 225, 148, 162, 194, 227),
+    c("2012-05-26", "2012-06-09", "2012-06-19", "2012-06-29", 
+      "2012-07-11", "2012-07-26", "2012-08-13", "2012-05-26", 
+      "2012-06-09", "2012-07-11", "2012-08-13"))) %>% 
+  filter(!grepl("NaN", fracdiff)) %>%
+  spread(doy, fracdiff) %>% 
+  kable(row.names = FALSE)
+})
+
+#plotdiff(rall.te, treatcol = smcd, dodge = 4)
+#plotdiff(ml.season, treatcol = smcd, scales = "fixed")
+#plotdiff(ndvi.te, treatcol = c("forestgreen", "orange", "red", "black"), 
+#  dodge = 1, panel.eq = year + y_variable ~ ., subset = comparison == "A.O - C.N")
+#plotdiff(resins.te, treatcol = smcd, panel.eq = doy + y_variable + tussock ~ .) +
+#  geom_hline(yintercept = 1)
+
+
+```
+
+_Leaf nitrogen_
+
+```{r leaf_n, fig.width = 10, fig.height = 6}
+leaves <- rcsv("leaves.csv") %>% 
+  mutate(treatment = ordered(treatment, levels = c("C.N", "A.N", "C.O", "A.O"))) %>% 
+  filter(year == 2012)
+leaves.te <- treateffect(leaves, leaf_percent_n ~ treatment | species, 
+  times = "doy", comp_function = bootfrac)
+plot(leaves.te, dodge = 3, treatcol = smc, panel.eq = species ~ .) + smn_scale()
+
+fig = fig + 1; sfig = sfig + 1
+```
+
+Figure `r fig`. Leaf N throughout the 2012 season. Two dates had all four treatments while the control and early snowmelt were measured more often.
+
+In 2012, the combined treatment (warming + early snowmelt) led to reduced leaf N in the shrubs,  _P. bistorta_, and _C. bigelowii_ on the first sampling date of June 9, 2012 (Figure `r fig`; _B. nana_ _T~r~_ = `r compex_fracdiff(leaves.te, doy == 160, comparison == "A.O - C.N", species == "Betula")`; _S. pulchra_ _T~r~_ = `r compex_fracdiff(leaves.te, doy == 160, comparison == "A.O - C.N", species == "Salix")`; _P. bistorta_ _T~r~_ = `r compex_fracdiff(leaves.te, doy == 160, comparison == "A.O - C.N", species == "Bistort")`; _C. bigelowii_ _T~r~_ = `r compex_fracdiff(leaves.te, doy == 160, comparison == "A.O - C.N", species == "Carex")`). Data were missing for _E. vaginatum_ on the June 9 sampling date. The early snowmelt and warming treatments alone showed similar effects but to a lesser degree for these species (e.g., for _B. nana_: _T~r~_ = `r compex_fracdiff(leaves.te, doy == 160, comparison == "A.N - C.N", species == "Betula")` in early snowmelt and _T~r~_ = `r compex_fracdiff(leaves.te, doy == 160, comparison == "C.O - C.N", species == "Betula")` in warming only). These N reductions were poorly constrained but possibly the opposite in _V. vitis-idaea_ (_T~r~_ = `r compex_fracdiff(leaves.te, doy == 160, comparison == "A.O - C.N", species == "Vaccinium")`). Later in the season, a consistent multi-species response did not persist, with some plants showing slight increases, others showing decreases and others more variable and poorly constrained (Figure `r fig`; Table S`r sfig``).
+
+``` {r 2011_pore_water_N_effect, fig.width = 10, fig.height = 6}
+ml.te <- treateffect(ml, labile ~ treatment|tussock+year, times = "doy", 
+  block = "block", subset = year == 2011, comp_function = bootdiff)
+#plotdiff(ml.te, subset = comparison == "A.N - C.N", treatcol = smcd)
+```
+
+Figure S`r sfig`. Analysis of the effects of the early snowmelt treatment in tussock soils throughout the 2011 season for intertussock and tussock soil pore water samples. Difference from control (mean ± bootstrap 95% CI) is shown for each date.
